@@ -1,0 +1,35 @@
+<h2>DESCRIPTION</h2>
+
+<em>g.extension.github</em> downloads and installs, removes or updates
+extensions (addons) from the official
+<a href="https://grass.osgeo.org/grass7/manuals/addons/">GRASS GIS Addons
+  repository</a>. It uses <em><a href="g.extension.html">g.extension</a></em>.
+
+If a commit hash is set as <b>reference</b> then the addon downloads the
+extension from GitHub according to this hash and uses
+<em><a href="g.extension.html">g.extension</a></em> to install it.
+
+<h2>EXAMPLES</h2>
+
+<h3>Download and install of an extension</h3>
+
+Download and install <em>r.stream.distance</em> into current GRASS installation
+
+<div class="code"><pre>
+g.extension.github extension=i.sentinel -f reference=0e61c94d2b4aab5f22a6b001cf0b2dc2c46662ba
+</pre></div>
+
+<h2>SEE ALSO</h2>
+
+<em>
+<a href="g.extension.html">g.extension</a>
+</em>
+
+<h2>AUTHORS</h2>
+
+Anika Weinmann, mundialis<br>
+
+<!--
+<p>
+<i>Last changed: $Date$</i>
+-->
