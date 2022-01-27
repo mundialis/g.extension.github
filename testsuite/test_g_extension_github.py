@@ -24,8 +24,6 @@ from grass.gunittest.case import TestCase
 from grass.gunittest.main import test
 from grass.gunittest.gmodules import SimpleModule
 
-import os
-
 
 class Testg_extension_github(TestCase):
     """Test g.extension.github script with a multi-module and specific commit hash"""
