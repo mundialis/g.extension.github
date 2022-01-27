@@ -142,6 +142,7 @@ def get_first_dir(commit_url, reference):
     # /src
     first_dir = "src"
     req = urllib.request.urlopen(commit_url + reference)
+    grass.verbose(commit_url + reference)
     content = json.loads(req.read())
     filenames = [file["filename"] for file in content["files"]]
     # if any path of files in the commit starts with "grass8",
