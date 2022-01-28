@@ -23,7 +23,6 @@
 #############################################################################
 
 # %module
-# % label: Tool to download and install extensions from official GRASS GIS Addons GitHub repo (https://github.com/OSGeo/grass-addons) using g.extension
 # % description: Downloads and installs extensions from GRASS Addons repository using g.extension
 # % keyword: general
 # % keyword: installation
@@ -88,7 +87,7 @@ curr_path = None
 
 
 def cleanup():
-    grass.message(_("Cleaning up.."))
+    grass.message(_("Cleaning up..."))
     for folder in rm_folders:
         if os.path.isdir(folder):
             shutil.rmtree(folder)
@@ -143,12 +142,13 @@ def get_first_dir(commit_url, reference):
     # /src
     first_dir = "src"
     req = urllib.request.urlopen(commit_url + reference)
+    grass.verbose(commit_url + reference)
     content = json.loads(req.read())
     filenames = [file["filename"] for file in content["files"]]
-    # if any path of files in the commit starts with "grass7",
+    # if any path of files in the commit starts with "grass8",
     # then this is assumed as the first directory
-    if any(item.startswith("grass7") for item in filenames):
-        first_dir = "grass7"
+    if any(item.startswith("grass8") for item in filenames):
+        first_dir = "grass8"
     return first_dir
 
 
@@ -212,7 +212,7 @@ def main():
         if process.stderr != b'':
             grass.fatal(_("Configuring the single extension does not work: "
                 "<git config core.sparseCheckout true> failed"))
-        # echo "grass7/imagery/i.sentinel"  > .git/info/sparse-checkout
+        # echo "grass8/imagery/i.sentinel"  > .git/info/sparse-checkout
         gversion = "grass{}".format(grass.version()['version'].split('.')[0])
         ext_type = get_module_class(extension)
         extension_folder = "{}/{}/{}".format(gversion, ext_type, extension)

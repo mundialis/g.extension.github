@@ -2,32 +2,33 @@
 
 <em>g.extension.github</em> downloads and installs, removes or updates
 extensions (addons) from the official
-<a href="https://grass.osgeo.org/grass7/manuals/addons/">GRASS GIS Addons
-  repository</a>. It uses <em><a href="g.extension.html">g.extension</a></em>.
+<a href="https://grass.osgeo.org/grass8/manuals/addons/">GRASS GIS Addons
+  repository</a>. It uses <em>g.extension</em>.
 
 If a commit hash is set as <b>reference</b> then the addon downloads the
-extension from GitHub according to this hash and uses
-<em><a href="g.extension.html">g.extension</a></em> to install it.
+extension from GitHub according to this hash and uses <em>g.extension</em>
+to install it.
 
 <h2>EXAMPLES</h2>
 
-<h3>Download and install of an extension</h3>
+<h3>Download and install of a specific version of a GRASS extension</h3>
 
-Download and install <em>r.stream.distance</em> into current GRASS installation
+Download and install a specific version of <em>i.sentinel</em> (identified
+via GitHub commit hash) into current GRASS GIS installation:
 
 <div class="code"><pre>
-g.extension.github extension=i.sentinel -f reference=0e61c94d2b4aab5f22a6b001cf0b2dc2c46662ba
+g.extension.github extension=i.sentinel -f reference=aff69a9a0dac8c68ccb877858675d84588b35bd2
 </pre></div>
 
 <h2>SEE ALSO</h2>
 
 <em>
-<a href="g.extension.html">g.extension</a>
+<a href="https://grass.osgeo.org/grass-stable/manuals/g.extension.html">g.extension</a>
 </em>
 
-<h2>AUTHORS</h2>
+<h2>AUTHOR</h2>
 
-Anika Weinmann, mundialis<br>
+Anika Weinmann, <a href="https://www.mundialis.de/">mundialis</a>, Germany
 
 <!--
 <p>
