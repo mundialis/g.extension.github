@@ -80,15 +80,6 @@ import sys
 import base64
 import requests
 import urllib.request
-# try:
-#     from urllib2 import urlopen, URLError, HTTPError, urlretrieve
-#     from urllib2 import build_opener, install_opener
-#     from urllib2 import HTTPPasswordMgrWithDefaultRealm, HTTPBasicAuthHandler
-# except ImportError:
-#     from urllib.request import urlopen, urlretrieve
-#     from urllib.request import build_opener, install_opener
-#     from urllib.request import HTTPPasswordMgrWithDefaultRealm, HTTPBasicAuthHandler
-#     from urllib.error import URLError, HTTPError
 
 import grass.script as grass
 
