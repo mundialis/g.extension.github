@@ -77,9 +77,23 @@ import json
 import os
 import shutil
 import sys
+import base64
 import urllib.request
 
 import grass.script as grass
+
+try:
+    import requests
+except ImportError:
+    grass.fatal(
+        _(
+            "Cannot import requests (https://docs.python-requests.org/en/latest/)"
+            " library."
+            " Please install it (pip install requests)"
+            " or ensure that it is on path"
+            " (u se PYTHONPATH variable)."
+        )
+    )
 
 
 rm_folders = []
@@ -115,12 +129,33 @@ def get_module_class(module_name):
     return name.get(class_letters, class_letters)
 
 
+def urlopen_with_auth(url):
+    request = urllib.request.Request(url)
+    if "GITHUB_TOKEN" in os.environ and "GITHUB_USERNAME" in os.environ:
+        base64string = base64.b64encode((f"{os.environ['GITHUB_USERNAME']}:{os.environ['GITHUB_TOKEN']}").encode())
+        request.add_header("Authorization", "Basic %s" % base64string)
+    return urllib.request.urlopen(request)
+
+
+def urlretrieve_with_auth(url, path):
+    session = requests.Session()
+    if "GITHUB_TOKEN" in os.environ and "GITHUB_USERNAME" in os.environ:
+        session.auth = (
+            os.environ['GITHUB_USERNAME'],
+            os.environ['GITHUB_TOKEN']
+        )
+    response = session.get(url, stream=True)
+    if response.status_code == 200:
+        with open(path, 'wb') as f:
+            f.write(response.content)
+
+
 def download_git(base_url, dir, reference, tmp_dir, lstrip=2):
     """
     Downloading a folder of github with urllib.request based on Stefan
     Blumentrath code from https://github.com/OSGeo/grass/issues/625.
     """
-    req = urllib.request.urlopen(base_url + dir + "?ref=" + reference)
+    req = urlopen_with_auth(base_url + dir + "?ref=" + reference)
     content = json.loads(req.read())
     # directories = []
     for element in content:
@@ -129,7 +164,7 @@ def download_git(base_url, dir, reference, tmp_dir, lstrip=2):
             os.makedirs(os.path.dirname(path))
 
         if element["download_url"] is not None:
-            urllib.request.urlretrieve(element["download_url"], path)
+            urlretrieve_with_auth(element["download_url"], path)
         else:
             download_git(base_url, element["path"], reference, tmp_dir)
 
@@ -141,7 +176,7 @@ def get_first_dir(commit_url, reference):
     # assume that we use the current state of the repo where addons lie in
     # /src
     first_dir = "src"
-    req = urllib.request.urlopen(commit_url + reference)
+    req = urlopen_with_auth(commit_url + reference)
     grass.verbose(commit_url + reference)
     content = json.loads(req.read())
     filenames = [file["filename"] for file in content["files"]]
