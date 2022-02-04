@@ -86,7 +86,6 @@ import grass.script as grass
 
 rm_folders = []
 curr_path = None
-opener = None
 
 
 def cleanup():
@@ -178,7 +177,7 @@ def get_first_dir(commit_url, reference):
 
 def main():
 
-    global rm_folders, opener
+    global rm_folders
 
     extension = options["extension"]
     operation = options["operation"]
