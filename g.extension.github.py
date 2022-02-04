@@ -78,10 +78,22 @@ import os
 import shutil
 import sys
 import base64
-import requests
 import urllib.request
 
 import grass.script as grass
+
+try:
+    import requests
+except ImportError:
+    grass.fatal(
+        _(
+            "Cannot import requests (https://docs.python-requests.org/en/latest/)"
+            " library."
+            " Please install it (pip install requests)"
+            " or ensure that it is on path"
+            " (u se PYTHONPATH variable)."
+        )
+    )
 
 
 rm_folders = []
