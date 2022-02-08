@@ -98,6 +98,9 @@ except ImportError:
 
 rm_folders = []
 curr_path = None
+GIT_URL = "https://github.com/OSGeo/grass-addons"
+RAW_URL = "https://raw.githubusercontent.com/OSGeo/grass-addons"
+API_URL = "https://api.github.com/repos/OSGeo/grass-addons/contents"
 
 
 def cleanup():
@@ -150,12 +153,12 @@ def urlretrieve_with_auth(url, path):
             f.write(response.content)
 
 
-def download_git(base_url, dir, reference, tmp_dir, lstrip=2):
+def download_git(gitapi_url, git_url, reference, tmp_dir, lstrip=2):
     """
     Downloading a folder of github with urllib.request based on Stefan
     Blumentrath code from https://github.com/OSGeo/grass/issues/625.
     """
-    req = urlopen_with_auth(base_url + dir + "?ref=" + reference)
+    req = urlopen_with_auth(f"{gitapi_url}?ref={reference}")
     content = json.loads(req.read())
     # directories = []
     for element in content:
@@ -164,27 +167,16 @@ def download_git(base_url, dir, reference, tmp_dir, lstrip=2):
             os.makedirs(os.path.dirname(path))
 
         if element["download_url"] is not None:
-            urlretrieve_with_auth(element["download_url"], path)
+            file = os.path.basename(element["download_url"])
+            url = f"{git_url}/{file}"
+            urlretrieve_with_auth(url, path)
         else:
-            download_git(base_url, element["path"], reference, tmp_dir)
-
-
-def get_first_dir(commit_url, reference):
-    """
-    Check the commit history to find the filename structure
-    """
-    # assume that we use the current state of the repo where addons lie in
-    # /src
-    first_dir = "src"
-    req = urlopen_with_auth(commit_url + reference)
-    grass.verbose(commit_url + reference)
-    content = json.loads(req.read())
-    filenames = [file["filename"] for file in content["files"]]
-    # if any path of files in the commit starts with "grass8",
-    # then this is assumed as the first directory
-    if any(item.startswith("grass8") for item in filenames):
-        first_dir = "grass8"
-    return first_dir
+            download_git(
+                f"{gitapi_url}/{element['name']}",
+                f"{git_url}/{element['name']}",
+                reference,
+                tmp_dir
+            )
 
 
 def main():
@@ -269,16 +261,15 @@ def main():
         Blumentrath code from https://github.com/OSGeo/grass/issues/625.
         """
         # code based
-        gversion = "grass{}".format(grass.version()["version"].split(".")[0])
         ext_type = get_module_class(extension)
-        commit_url = "https://api.github.com/repos/OSGeo/grass-addons/commits/"
-        first_dir = get_first_dir(commit_url, reference)
-        extension_folder = "{}/{}/{}".format(first_dir, ext_type, extension)
-        original_url = "https://api.github.com/repos/OSGeo/grass-addons/contents/"
+
+        extension_folder = "src/{}/{}".format(ext_type, extension)
+        gitapi_url = f"{API_URL}/{extension_folder}"
+        git_url = f"{RAW_URL}/{reference}/src/{ext_type}/{extension}"
         new_repo_path = grass.tempdir()
         rm_folders.append(new_repo_path)
         try:
-            download_git(original_url, extension_folder, reference, new_repo_path)
+            download_git(gitapi_url, git_url, reference, new_repo_path)
         except Exception as e:
             grass.fatal(
                 _(
