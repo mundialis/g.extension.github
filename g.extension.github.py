@@ -274,7 +274,6 @@ def main():
             grass.fatal(
                 _(
                     "Could not find extension in repository.\n"
-                    f"Current GRASS version: {gversion}\n"
                     f"Searching in repo path {extension_folder}\n"
                     f"for reference {reference}.\n"
                     f"{e}"
