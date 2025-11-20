@@ -117,9 +117,9 @@ except ImportError:
 
 rm_folders = []
 curr_path = None
-RAW_URL = "https://raw.githubusercontent.com/OSGeo/grass-addons"
-API_URL = "https://api.github.com/repos/OSGeo/grass-addons/contents"
-
+RAW_URL_BASE = "https://raw.githubusercontent.com"
+RAW_URL = f"{RAW_URL_BASE}/OSGeo/grass-addons"
+API_URL = "https://api.github.com/repos/OSGeo/grass-addons"
 
 def cleanup():
     grass.message(_("Cleaning up..."))
@@ -171,31 +171,28 @@ def urlretrieve_with_auth(url, path):
             f.write(response.content)
 
 
-def download_git(gitapi_url, git_url, reference, tmp_dir, extension, lstrip=2):
+def download_git(gitapi_url, git_url, reference, tmp_dir):
     """
     Downloading a folder of github with urllib.request based on Stefan
     Blumentrath code from https://github.com/OSGeo/grass/issues/625.
     """
     req = urlopen_with_auth(f"{gitapi_url}?ref={reference}")
     content = json.loads(req.read())
-    # directories = []
     for element in content:
-        path = os.path.join(tmp_dir, *element["path"].split("/")[lstrip:], extension)
+        path = tmp_dir
         if not os.path.exists(path):
             os.makedirs(path)
 
         if element["download_url"] is not None:
-            file = os.path.basename(element["download_url"])
-            url = f"{git_url}/{file}"
-            import pdb; pdb.set_trace()
-            urlretrieve_with_auth(url, f"{path}/{file}")
-        else:
+            url = element["download_url"]
+            file_name = os.path.basename(element["download_url"])
+            urlretrieve_with_auth(url, f"{path}/{file_name}")
+        elif element["name"] != ".github":
             download_git(
                 f"{gitapi_url}/{element['name']}",
                 f"{git_url}/{element['name']}",
                 reference,
-                tmp_dir,
-                extension
+                os.path.join(path, element["name"]),
             )
 
 
@@ -237,69 +234,7 @@ def main():
             url=url,
             flags=gextension_flags,
         )
-    # TODO:
-    # operation == "add" and reference == "main" and url and submodule
-    # operation == "add" and reference != "main" and not url
-    # operation == "add" and reference != "main" and url and not submodule
-    # operation == "add" and reference != "main" and url and submodule
     elif operation == "add":
-        #url=https://github.com/mundialis/r.dem.import            
-        if url:
-            organisation = url.split("/")[-2]
-            gitrepo = url.split("/")[-1]
-            if submodule:
-                gitapi_url = f"https://api.github.com/repos/{organisation}/{gitrepo}/contents/{submodule}"
-                # git_url = f"https://raw.githubusercontent.com/{organisation}/{gitrepo}/refs/heads/{reference}/{submodule}"
-            else:
-                gitapi_url = f"https://api.github.com/repos/{organisation}/{gitrepo}/contents/"
-                # git_url = f"https://raw.githubusercontent.com/{organisation}/{gitrepo}/refs/heads/{reference}/{extension}"
-        else:
-            if reference == "main":
-                reference == "grass8"
-            # code based
-            #RAW_URL = "https://raw.githubusercontent.com/OSGeo/grass-addons"
-            #API_URL = "https://api.github.com/repos/OSGeo/grass-addons/contents"
-            ext_type = get_module_class(extension)
-            extension_folder = "src/{}/{}".format(ext_type, extension)
-            gitapi_url = f"{API_URL}/{extension_folder}"        
-            # git_url = f"{RAW_URL}/refs/heads/{reference}/src/{ext_type}/{extension}"
-        if reference != "main" and reference != "grass8":
-            gitapi_url_tags = gitapi_url.replace("/contents/","/tags")
-            req = urlopen_with_auth(gitapi_url_tags)
-            content = json.loads(req.read())
-            # for element in content:
-            #     content
-
-        new_repo_path = grass.tempdir()
-        rm_folders.append(new_repo_path)
-        try:
-            download_git(gitapi_url, git_url, reference, new_repo_path, extension)
-        except Exception as e:
-            grass.fatal(
-                _(
-                    "Could not find extension in repository.\n"
-                    f"Searching in repo path {extension_folder}\n"
-                    f"for reference {reference}.\n"
-                    f"{e}"
-                )
-            )
-        extension_path = os.path.join(new_repo_path, extension)
-
-        """
-        Install addon with g.extension
-        """
-        if submodule:
-            install_addon = submodule
-        else:
-            install_addon = extension
-        import pdb; pdb.set_trace()
-        grass.run_command(
-            "g.extension",
-            extension=install_addon,
-            url=extension_path,
-            operation=operation,
-            flags=gextension_flags,
-        )
         """
         Download folder from github using Python3 moudule 'git' and
         the configuration in git 'core.sparseCheckout'
@@ -352,6 +287,79 @@ def main():
         Downloading a folder of github with urllib.request based on Stefan
         Blumentrath code from https://github.com/OSGeo/grass/issues/625.
         """
+        """
+        Set git api url
+        """
+        if url:
+            organisation = url.split("/")[-2]
+            gitrepo = url.split("/")[-1]
+            gitapi_url_base = f"https://api.github.com/repos/{organisation}/{gitrepo}"
+            if submodule:
+                gitapi_url = f"{gitapi_url_base}/contents/{submodule}"
+            else:
+                gitapi_url = f"{gitapi_url_base}/contents/"
+        else:
+            if reference == "main":
+                reference == "grass8"
+            # code based
+            ext_type = get_module_class(extension)
+            extension_folder = "src/{}/{}".format(ext_type, extension)
+            gitapi_url_base = API_URL
+            gitapi_url = f"{API_URL}/contents/{extension_folder}"
+        """
+        Check if reference type is branch (heads) or tag
+        """
+        refs_type = "heads"
+        if reference != "main" and reference != "grass8":
+            gitapi_url_tags = f"{gitapi_url_base}/tags"
+            req = urlopen_with_auth(gitapi_url_tags)
+            content = json.loads(req.read())
+            for element in content:
+                if reference == element["name"]:
+                    refs_type = "tags"
+                    break
+        """
+        Set git url
+        """
+        if url:
+            git_url = f"{RAW_URL_BASE}/{organisation}/{gitrepo}/refs/{refs_type}/{reference}"
+        else:
+            git_url = f"{RAW_URL}/refs/{refs_type}/{reference}/src/{ext_type}/{extension}"
+        if submodule:
+            git_url += f"/{submodule}"
+        """
+        Download addon files
+        """
+        new_repo_path = os.path.join(grass.tempdir(), extension)
+        rm_folders.append(new_repo_path)
+        try:
+            download_git(gitapi_url, git_url, reference, new_repo_path)
+        except Exception as e:
+            grass.fatal(
+                _(
+                    "Could not find extension in repository.\n"
+                    f"Searching in repo path {extension_folder}\n"
+                    f"for reference {reference}.\n"
+                    f"{e}"
+                )
+            )
+        extension_path = new_repo_path
+
+        """
+        Install addon with g.extension
+        """
+        if submodule:
+            install_addon = submodule
+        else:
+            install_addon = extension
+        grass.run_command(
+            "g.extension",
+            extension=install_addon,
+            url=extension_path,
+            operation=operation,
+            flags=gextension_flags,
+        )
+
     else:
         grass.warning(_("Nothing done"))
 
