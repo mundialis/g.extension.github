@@ -51,6 +51,20 @@
 # %end
 
 # %option
+# % key: url
+# % type: string
+# % key_desc: url
+# % label: URL or directory to get the extension from (supported only on Linux and Mac)
+# % description: The official repository is used by default. User can specify a ZIP file, directory or a repository on common hosting services. If not identified, Subversion repository is assumed. See manual for all options.
+# %end
+
+# %option
+# % key: submodule
+# % type: string
+# % description: Submodule of Multi-Addon to be installed
+# %end
+
+# %option
 # % key: reference
 # % type: string
 # % key_desc: Branch or commit hash as reference
@@ -71,6 +85,11 @@
 # % description: Force removal when uninstalling extension (operation=remove)
 # % guisection: Remove
 # %end
+
+# %rules
+# % requires_all: submodule, url
+# %end
+
 
 import atexit
 import json
@@ -98,7 +117,6 @@ except ImportError:
 
 rm_folders = []
 curr_path = None
-GIT_URL = "https://github.com/OSGeo/grass-addons"
 RAW_URL = "https://raw.githubusercontent.com/OSGeo/grass-addons"
 API_URL = "https://api.github.com/repos/OSGeo/grass-addons/contents"
 
@@ -153,7 +171,7 @@ def urlretrieve_with_auth(url, path):
             f.write(response.content)
 
 
-def download_git(gitapi_url, git_url, reference, tmp_dir, lstrip=2):
+def download_git(gitapi_url, git_url, reference, tmp_dir, extension, lstrip=2):
     """
     Downloading a folder of github with urllib.request based on Stefan
     Blumentrath code from https://github.com/OSGeo/grass/issues/625.
@@ -162,20 +180,22 @@ def download_git(gitapi_url, git_url, reference, tmp_dir, lstrip=2):
     content = json.loads(req.read())
     # directories = []
     for element in content:
-        path = os.path.join(tmp_dir, *element["path"].split("/")[lstrip:])
-        if not os.path.exists(os.path.dirname(path)):
-            os.makedirs(os.path.dirname(path))
+        path = os.path.join(tmp_dir, *element["path"].split("/")[lstrip:], extension)
+        if not os.path.exists(path):
+            os.makedirs(path)
 
         if element["download_url"] is not None:
             file = os.path.basename(element["download_url"])
             url = f"{git_url}/{file}"
-            urlretrieve_with_auth(url, path)
+            import pdb; pdb.set_trace()
+            urlretrieve_with_auth(url, f"{path}/{file}")
         else:
             download_git(
                 f"{gitapi_url}/{element['name']}",
                 f"{git_url}/{element['name']}",
                 reference,
-                tmp_dir
+                tmp_dir,
+                extension
             )
 
 
@@ -185,6 +205,8 @@ def main():
 
     extension = options["extension"]
     operation = options["operation"]
+    url = options["url"]
+    submodule = options["submodule"]
     reference = options["reference"]
 
     gextension_flags = ""
@@ -200,14 +222,84 @@ def main():
             operation=operation,
             flags=gextension_flags,
         )
-    elif operation == "add" and reference == "main":
+    elif operation == "add" and reference == "main" and not url:
         grass.run_command(
             "g.extension",
             extension=extension,
             operation=operation,
             flags=gextension_flags,
         )
-    elif operation == "add" and reference != "main":
+    elif operation == "add" and reference == "main" and url and not submodule:
+        grass.run_command(
+            "g.extension",
+            extension=extension,
+            operation=operation,
+            url=url,
+            flags=gextension_flags,
+        )
+    # TODO:
+    # operation == "add" and reference == "main" and url and submodule
+    # operation == "add" and reference != "main" and not url
+    # operation == "add" and reference != "main" and url and not submodule
+    # operation == "add" and reference != "main" and url and submodule
+    elif operation == "add":
+        #url=https://github.com/mundialis/r.dem.import            
+        if url:
+            organisation = url.split("/")[-2]
+            gitrepo = url.split("/")[-1]
+            if submodule:
+                gitapi_url = f"https://api.github.com/repos/{organisation}/{gitrepo}/contents/{submodule}"
+                # git_url = f"https://raw.githubusercontent.com/{organisation}/{gitrepo}/refs/heads/{reference}/{submodule}"
+            else:
+                gitapi_url = f"https://api.github.com/repos/{organisation}/{gitrepo}/contents/"
+                # git_url = f"https://raw.githubusercontent.com/{organisation}/{gitrepo}/refs/heads/{reference}/{extension}"
+        else:
+            if reference == "main":
+                reference == "grass8"
+            # code based
+            #RAW_URL = "https://raw.githubusercontent.com/OSGeo/grass-addons"
+            #API_URL = "https://api.github.com/repos/OSGeo/grass-addons/contents"
+            ext_type = get_module_class(extension)
+            extension_folder = "src/{}/{}".format(ext_type, extension)
+            gitapi_url = f"{API_URL}/{extension_folder}"        
+            # git_url = f"{RAW_URL}/refs/heads/{reference}/src/{ext_type}/{extension}"
+        if reference != "main" and reference != "grass8":
+            gitapi_url_tags = gitapi_url.replace("/contents/","/tags")
+            req = urlopen_with_auth(gitapi_url_tags)
+            content = json.loads(req.read())
+            # for element in content:
+            #     content
+
+        new_repo_path = grass.tempdir()
+        rm_folders.append(new_repo_path)
+        try:
+            download_git(gitapi_url, git_url, reference, new_repo_path, extension)
+        except Exception as e:
+            grass.fatal(
+                _(
+                    "Could not find extension in repository.\n"
+                    f"Searching in repo path {extension_folder}\n"
+                    f"for reference {reference}.\n"
+                    f"{e}"
+                )
+            )
+        extension_path = os.path.join(new_repo_path, extension)
+
+        """
+        Install addon with g.extension
+        """
+        if submodule:
+            install_addon = submodule
+        else:
+            install_addon = extension
+        import pdb; pdb.set_trace()
+        grass.run_command(
+            "g.extension",
+            extension=install_addon,
+            url=extension_path,
+            operation=operation,
+            flags=gextension_flags,
+        )
         """
         Download folder from github using Python3 moudule 'git' and
         the configuration in git 'core.sparseCheckout'
@@ -260,38 +352,6 @@ def main():
         Downloading a folder of github with urllib.request based on Stefan
         Blumentrath code from https://github.com/OSGeo/grass/issues/625.
         """
-        # code based
-        ext_type = get_module_class(extension)
-
-        extension_folder = "src/{}/{}".format(ext_type, extension)
-        gitapi_url = f"{API_URL}/{extension_folder}"
-        git_url = f"{RAW_URL}/{reference}/src/{ext_type}/{extension}"
-        new_repo_path = grass.tempdir()
-        rm_folders.append(new_repo_path)
-        try:
-            download_git(gitapi_url, git_url, reference, new_repo_path)
-        except Exception as e:
-            grass.fatal(
-                _(
-                    "Could not find extension in repository.\n"
-                    f"Searching in repo path {extension_folder}\n"
-                    f"for reference {reference}.\n"
-                    f"{e}"
-                )
-            )
-        extension_path = os.path.join(new_repo_path, extension)
-
-        """
-        Install addon with g.extension
-        """
-        grass.run_command(
-            "g.extension",
-            extension=extension,
-            url=extension_path,
-            operation=operation,
-            flags=gextension_flags,
-        )
-
     else:
         grass.warning(_("Nothing done"))
 
