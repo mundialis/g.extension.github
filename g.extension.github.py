@@ -111,7 +111,7 @@ except ImportError:
             " library."
             " Please install it (pip install requests)"
             " or ensure that it is on path"
-            " (u se PYTHONPATH variable).",
+            " (use PYTHONPATH variable).",
         ),
     )
 
