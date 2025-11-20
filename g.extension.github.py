@@ -203,8 +203,6 @@ def download_git(gitapi_url, git_url, reference, tmp_dir) -> None:
 
 def main() -> None:
 
-    global rm_folders
-
     extension = options["extension"]
     operation = options["operation"]
     url = options["url"]
