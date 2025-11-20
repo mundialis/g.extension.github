@@ -117,22 +117,21 @@ except ImportError:
 
 
 rm_folders = []
-curr_path = None
 RAW_URL_BASE = "https://raw.githubusercontent.com"
 RAW_URL = f"{RAW_URL_BASE}/OSGeo/grass-addons"
 API_URL = "https://api.github.com/repos/OSGeo/grass-addons"
 
 
 def cleanup() -> None:
+    """Clean up."""
     grass.message(_("Cleaning up..."))
     for folder in rm_folders:
         if pathlib.Path(folder).is_dir():
             shutil.rmtree(folder)
-    if curr_path is not None:
-        os.chdir(curr_path)
 
 
 def get_module_class(module_name):
+    """Get GRASS GIS module class."""
     class_letters = module_name.split(".", 1)[0]
     name = {
         "d": "display",
@@ -153,6 +152,7 @@ def get_module_class(module_name):
 
 
 def urlopen_with_auth(url):
+    """Use github authentication for urlopen."""
     request = urllib.request.Request(url)
     if "GITHUB_TOKEN" in os.environ and "GITHUB_USERNAME" in os.environ:
         base64string = base64.b64encode(
@@ -165,6 +165,7 @@ def urlopen_with_auth(url):
 
 
 def urlretrieve_with_auth(url, path) -> None:
+    """Retrieve url with authentication."""
     session = requests.Session()
     if "GITHUB_TOKEN" in os.environ and "GITHUB_USERNAME" in os.environ:
         session.auth = (
@@ -202,6 +203,7 @@ def download_git(gitapi_url, git_url, reference, tmp_dir) -> None:
 
 
 def main() -> None:
+    """Execute main part."""
 
     extension = options["extension"]
     operation = options["operation"]
@@ -215,7 +217,9 @@ def main() -> None:
     if flags["s"]:
         gextension_flags += "s"
 
-    if operation == "remove" or (operation == "add" and reference == "main" and not url):
+    if operation == "remove" or (
+        operation == "add" and reference == "main" and not url
+    ):
         grass.run_command(
             "g.extension",
             extension=extension,
@@ -281,9 +285,15 @@ def main() -> None:
         Set git url
         """
         if url:
-            git_url = f"{RAW_URL_BASE}/{organisation}/{gitrepo}/refs/{refs_type}/{reference}"
+            git_url = (
+                f"{RAW_URL_BASE}/{organisation}/{gitrepo}/refs/{refs_type}"
+                f"/{reference}"
+            )
         else:
-            git_url = f"{RAW_URL}/refs/{refs_type}/{reference}/src/{ext_type}/{extension}"
+            git_url = (
+                f"{RAW_URL}/refs/{refs_type}/{reference}/src/{ext_type}"
+                f"/{extension}"
+            )
         if submodule:
             git_url += f"/{submodule}"
         """

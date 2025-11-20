@@ -10,3 +10,8 @@ on:
 jobs:
   lint:
     uses: mundialis/github-workflows/.github/workflows/linting.yml@main
+    with:
+      VALIDATE_BASH: false
+      VALIDATE_BASH_EXEC: false
+      VALIDATE_DOCKERFILE_HADOLINT: false
+      VALIDATE_HTML: false
