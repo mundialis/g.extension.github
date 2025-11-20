@@ -92,11 +92,12 @@
 
 
 import atexit
+import base64
 import json
 import os
+import pathlib
 import shutil
 import sys
-import base64
 import urllib.request
 
 import grass.script as grass
@@ -110,27 +111,27 @@ except ImportError:
             " library."
             " Please install it (pip install requests)"
             " or ensure that it is on path"
-            " (u se PYTHONPATH variable)."
-        )
+            " (use PYTHONPATH variable).",
+        ),
     )
 
 
 rm_folders = []
-curr_path = None
 RAW_URL_BASE = "https://raw.githubusercontent.com"
 RAW_URL = f"{RAW_URL_BASE}/OSGeo/grass-addons"
 API_URL = "https://api.github.com/repos/OSGeo/grass-addons"
 
-def cleanup():
+
+def cleanup() -> None:
+    """Clean up."""
     grass.message(_("Cleaning up..."))
     for folder in rm_folders:
-        if os.path.isdir(folder):
+        if pathlib.Path(folder).is_dir():
             shutil.rmtree(folder)
-    if curr_path is not None:
-        os.chdir(curr_path)
 
 
 def get_module_class(module_name):
+    """Get GRASS GIS module class."""
     class_letters = module_name.split(".", 1)[0]
     name = {
         "d": "display",
@@ -151,41 +152,46 @@ def get_module_class(module_name):
 
 
 def urlopen_with_auth(url):
+    """Use github authentication for urlopen."""
     request = urllib.request.Request(url)
     if "GITHUB_TOKEN" in os.environ and "GITHUB_USERNAME" in os.environ:
-        base64string = base64.b64encode((f"{os.environ['GITHUB_USERNAME']}:{os.environ['GITHUB_TOKEN']}").encode())
-        request.add_header("Authorization", "Basic %s" % base64string)
+        base64string = base64.b64encode(
+            (
+                f"{os.environ['GITHUB_USERNAME']}:{os.environ['GITHUB_TOKEN']}"
+            ).encode(),
+        )
+        request.add_header("Authorization", f"Basic {base64string}")
     return urllib.request.urlopen(request)
 
 
-def urlretrieve_with_auth(url, path):
+def urlretrieve_with_auth(url, path) -> None:
+    """Retrieve url with authentication."""
     session = requests.Session()
     if "GITHUB_TOKEN" in os.environ and "GITHUB_USERNAME" in os.environ:
         session.auth = (
-            os.environ['GITHUB_USERNAME'],
-            os.environ['GITHUB_TOKEN']
+            os.environ["GITHUB_USERNAME"],
+            os.environ["GITHUB_TOKEN"],
         )
     response = session.get(url, stream=True)
     if response.status_code == 200:
-        with open(path, 'wb') as f:
+        with open(path, "wb") as f:
             f.write(response.content)
 
 
-def download_git(gitapi_url, git_url, reference, tmp_dir):
-    """
-    Downloading a folder of github with urllib.request based on Stefan
+def download_git(gitapi_url, git_url, reference, tmp_dir) -> None:
+    """Downloading a folder of github with urllib.request based on Stefan
     Blumentrath code from https://github.com/OSGeo/grass/issues/625.
     """
     req = urlopen_with_auth(f"{gitapi_url}?ref={reference}")
     content = json.loads(req.read())
     for element in content:
         path = tmp_dir
-        if not os.path.exists(path):
-            os.makedirs(path)
+        if not pathlib.Path(path).exists():
+            pathlib.Path(path).mkdir(parents=True)
 
         if element["download_url"] is not None:
             url = element["download_url"]
-            file_name = os.path.basename(element["download_url"])
+            file_name = pathlib.Path(element["download_url"]).name
             urlretrieve_with_auth(url, f"{path}/{file_name}")
         elif element["name"] != ".github":
             download_git(
@@ -196,9 +202,8 @@ def download_git(gitapi_url, git_url, reference, tmp_dir):
             )
 
 
-def main():
-
-    global rm_folders
+def main() -> None:
+    """Execute main part."""
 
     extension = options["extension"]
     operation = options["operation"]
@@ -212,14 +217,9 @@ def main():
     if flags["s"]:
         gextension_flags += "s"
 
-    if operation == "remove":
-        grass.run_command(
-            "g.extension",
-            extension=extension,
-            operation=operation,
-            flags=gextension_flags,
-        )
-    elif operation == "add" and reference == "main" and not url:
+    if operation == "remove" or (
+        operation == "add" and reference == "main" and not url
+    ):
         grass.run_command(
             "g.extension",
             extension=extension,
@@ -242,58 +242,21 @@ def main():
         This installation takes for i.sentinel about 45 sec
         (very long compared to 8 sec (reference value is from g.extension)).
         """
-        """
-        try:
-            from git import Repo
-        except Exception as e:
-            grass.fatal(_("Python module 'git' is not installed. Please "
-                "install it with e.g. <python -m pip install gitpython>"))
-        # mkdir folder && cd folder
-        new_repo_path = grass.tempdir()
-        rm_folders.append(new_repo_path)
-        # git init
-        new_repo = Repo.init(new_repo_path)
-        # git remote add origin https://github.com/OSGeo/grass-addons.git
-        origin = new_repo.create_remote(
-            'origin', 'https://github.com/OSGeo/grass-addons.git')
-        curr_path = os.getcwd()
-        os.chdir(new_repo_path)
-        # git config core.sparseCheckout true
-        process = subprocess.run(
-            ['git', 'config', 'core.sparseCheckout', 'true'],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
-        if process.stderr != b'':
-            grass.fatal(_("Configuring the single extension does not work: "
-                "<git config core.sparseCheckout true> failed"))
-        # echo "grass8/imagery/i.sentinel"  > .git/info/sparse-checkout
-        gversion = "grass{}".format(grass.version()['version'].split('.')[0])
-        ext_type = get_module_class(extension)
-        extension_folder = "{}/{}/{}".format(gversion, ext_type, extension)
-        with open('.git/info/sparse-checkout', 'w') as git_conf:
-            git_conf.write(extension_folder)
-        # git pull origin master
-        origin.pull('master')
-        # git checkout -b hash_branch 0e61c94d2b4aab5f22a6b001cf0b2dc2c46662ba
-        try:
-            new_repo.git.checkout(reference, b="hash_branch")
-        except Exception as e:
-            grass.fatal(_("Reference <{}> not found".format(reference)))
-        os.chdir(curr_path)
-        extension_path = os.path.join(new_repo_path, extension_folder)
-        """
 
         """
         Downloading a folder of github with urllib.request based on Stefan
         Blumentrath code from https://github.com/OSGeo/grass/issues/625.
         """
+
         """
         Set git api url
         """
         if url:
             organisation = url.split("/")[-2]
             gitrepo = url.split("/")[-1]
-            gitapi_url_base = f"https://api.github.com/repos/{organisation}/{gitrepo}"
+            gitapi_url_base = (
+                f"https://api.github.com/repos/{organisation}/{gitrepo}"
+            )
             if submodule:
                 gitapi_url = f"{gitapi_url_base}/contents/{submodule}"
             else:
@@ -303,14 +266,14 @@ def main():
                 reference == "grass8"
             # code based
             ext_type = get_module_class(extension)
-            extension_folder = "src/{}/{}".format(ext_type, extension)
+            extension_folder = f"src/{ext_type}/{extension}"
             gitapi_url_base = API_URL
             gitapi_url = f"{API_URL}/contents/{extension_folder}"
         """
         Check if reference type is branch (heads) or tag
         """
         refs_type = "heads"
-        if reference != "main" and reference != "grass8":
+        if reference not in {"main", "grass8"}:
             gitapi_url_tags = f"{gitapi_url_base}/tags"
             req = urlopen_with_auth(gitapi_url_tags)
             content = json.loads(req.read())
@@ -322,9 +285,15 @@ def main():
         Set git url
         """
         if url:
-            git_url = f"{RAW_URL_BASE}/{organisation}/{gitrepo}/refs/{refs_type}/{reference}"
+            git_url = (
+                f"{RAW_URL_BASE}/{organisation}/{gitrepo}/refs/{refs_type}"
+                f"/{reference}"
+            )
         else:
-            git_url = f"{RAW_URL}/refs/{refs_type}/{reference}/src/{ext_type}/{extension}"
+            git_url = (
+                f"{RAW_URL}/refs/{refs_type}/{reference}/src/{ext_type}"
+                f"/{extension}"
+            )
         if submodule:
             git_url += f"/{submodule}"
         """
@@ -340,18 +309,15 @@ def main():
                     "Could not find extension in repository.\n"
                     f"Searching in repo path {extension_folder}\n"
                     f"for reference {reference}.\n"
-                    f"{e}"
-                )
+                    f"{e}",
+                ),
             )
         extension_path = new_repo_path
 
         """
         Install addon with g.extension
         """
-        if submodule:
-            install_addon = submodule
-        else:
-            install_addon = extension
+        install_addon = submodule or extension
         grass.run_command(
             "g.extension",
             extension=install_addon,

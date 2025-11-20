@@ -1,0 +1,17 @@
+name: Linting and code quality check
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+
+jobs:
+  lint:
+    uses: mundialis/github-workflows/.github/workflows/linting.yml@main
+    with:
+      VALIDATE_BASH: false
+      VALIDATE_BASH_EXEC: false
+      VALIDATE_DOCKERFILE_HADOLINT: false
+      VALIDATE_HTML: false

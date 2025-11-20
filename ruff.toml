@@ -1,0 +1,25 @@
+# Extends https://github.com/mundialis/github-workflows/blob/main/linting-config-examples/ruff.toml
+
+lint.ignore = [
+    # See https://docs.astral.sh/ruff/rules/
+    # TODO: fix lint issues or use lint_per-file-ignores
+    "ANN001",
+    "ANN201",
+    "B015",
+    "BLE001",
+    "D100",
+    "D202",
+    "D205",
+    "D209",
+    "D401",
+    "E501",
+    "FURB103",
+    "INT001",
+    "PLR0912",
+    "PLR0914",
+    "PLR0915",
+    "PLR2004",
+    "PTH118",
+    "PTH123",
+    "S310",
+]
