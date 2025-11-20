@@ -21,25 +21,31 @@
 #############################################################################
 
 from grass.gunittest.case import TestCase
-from grass.gunittest.main import test
 from grass.gunittest.gmodules import SimpleModule
+from grass.gunittest.main import test
 
 
 class Testg_extension_github(TestCase):
-    """Test g.extension.github script with a multi-module and specific commit hash"""
+    """Test g.extension.github script with a multi-module and specific commit hash."""
 
     @classmethod
-    def tearDownClass(cls):
+    def tearDownClass(cls) -> None:
         """Remove extension."""
         cls.runModule(
-            "g.extension.github", extension="i.sentinel", operation="remove", flags="f"
+            "g.extension.github",
+            extension="i.sentinel",
+            operation="remove",
+            flags="f",
         )
 
-    def test_g_extension_github(self):
-        """Install i.sentinel extension with specific commit hash. The test is slow"""
+    def test_g_extension_github(self) -> None:
+        """Install i.sentinel extension with specific commit hash. The test is slow."""
         ghHash = "aff69a9a0dac8c68ccb877858675d84588b35bd2"
         module = SimpleModule(
-            "g.extension.github", extension="i.sentinel", reference=ghHash, flags="f"
+            "g.extension.github",
+            extension="i.sentinel",
+            reference=ghHash,
+            flags="f",
         )
         self.assertModule(module)
 
