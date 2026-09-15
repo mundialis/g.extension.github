@@ -10,4 +10,4 @@ RUN test -e requirements.txt && pip3 install -r requirements.txt || echo "No req
 # RUN grass -c epsg:3358 /grassdb/nc_spm_empty --exec bash test.sh NC
 
 # run tests in empty location
-RUN grass -c epsg:3358 /grassdb/nc_spm_empty --exec bash -x test.sh
+RUN grass -c epsg:3358 /grassdb/nc_spm_empty --exec bash test.sh
