@@ -16,4 +16,8 @@ jobs:
       contents: read
       packages: read
       statuses: write
+      pull-requests: write
     uses: mundialis/github-workflows/.github/workflows/linting.yml@main
+    with:
+      VALIDATE_HTML: false
+      VALIDATE_MARKDOWN: false
