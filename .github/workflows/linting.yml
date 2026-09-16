@@ -7,8 +7,16 @@ on:
       - develop
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   lint:
+    permissions:
+      contents: read
+      packages: read
+      statuses: write
+      pull-requests: write
     uses: mundialis/github-workflows/.github/workflows/linting.yml@main
     with:
       VALIDATE_BASH: false

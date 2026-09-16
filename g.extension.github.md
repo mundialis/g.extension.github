@@ -1,3 +1,4 @@
+<!-- markdownlint-disable MD041 -->
 ## DESCRIPTION
 
 *g.extension.github* downloads and installs, removes or updates
