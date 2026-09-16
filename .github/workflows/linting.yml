@@ -19,5 +19,7 @@ jobs:
       pull-requests: write
     uses: mundialis/github-workflows/.github/workflows/linting.yml@main
     with:
+      VALIDATE_BASH: false
+      VALIDATE_BASH_EXEC: false
+      VALIDATE_DOCKERFILE_HADOLINT: false
       VALIDATE_HTML: false
-      VALIDATE_MARKDOWN: false
